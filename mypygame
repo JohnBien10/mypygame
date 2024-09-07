@@ -1,0 +1,127 @@
+import pygame
+import sys
+
+pygame.init()
+
+WIDTH, HEIGHT = 800, 400
+BACKGROUND_COLOR = (135, 206, 250)
+PLAYER_COLOR = (255, 0, 0) 
+OBSTACLE_COLOR = (0, 0, 0) 
+
+PLAYER_RADIUS = 25
+PLAYER_Y_VELOCITY = 0
+PLAYER_JUMP_STRENGTH = -10
+GRAVITY = 0.5
+OBSTACLE_WIDTH = 30
+OBSTACLE_HEIGHT = 70
+OBSTACLE_SPEED = 5
+OBSTACLE_FREQUENCY = 1500 
+OBSTACLE_TIMER = pygame.USEREVENT + 1
+GROUND_HEIGHT = HEIGHT - 100
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("MyPyGame")
+
+player_center = [50 + PLAYER_RADIUS, GROUND_HEIGHT - PLAYER_RADIUS]
+player_on_ground = True
+
+obstacles = []
+passed_obstacles = set()
+
+score = 0
+
+def draw_player():
+    pygame.draw.circle(screen, PLAYER_COLOR, (int(player_center[0]), int(player_center[1])), PLAYER_RADIUS)
+
+def draw_obstacles():
+    for obs in obstacles:
+        pygame.draw.rect(screen, OBSTACLE_COLOR, obs)
+
+def create_obstacle():
+    return pygame.Rect(WIDTH, GROUND_HEIGHT - OBSTACLE_HEIGHT, OBSTACLE_WIDTH, OBSTACLE_HEIGHT)
+
+def move_obstacles():
+    global obstacles, score
+    new_obstacles = []
+    for obs in obstacles:
+        obs.x -= OBSTACLE_SPEED
+        if obs.x + OBSTACLE_WIDTH > 0:
+            new_obstacles.append(obs)
+            if obs.x + OBSTACLE_WIDTH < player_center[0] and obs.x not in passed_obstacles:
+                score += 1
+                passed_obstacles.add(obs.x)
+    obstacles = new_obstacles
+
+def check_collision():
+    for obs in obstacles:
+        player_rect = pygame.Rect(
+            player_center[0] - PLAYER_RADIUS, 
+            player_center[1] - PLAYER_RADIUS, 
+            PLAYER_RADIUS * 2, 
+            PLAYER_RADIUS * 2
+        )
+        if player_rect.colliderect(obs):
+            return True
+
+    if player_center[1] + PLAYER_RADIUS > GROUND_HEIGHT:
+        player_center[1] = GROUND_HEIGHT - PLAYER_RADIUS
+        return True
+    return False
+
+def draw_score():
+    font = pygame.font.Font(None, 36)
+    score_text = font.render(f'Score: {score}', True, (0, 0, 0))
+    screen.blit(score_text, (10, 10))
+
+def game_loop():
+    global PLAYER_Y_VELOCITY, player_on_ground, score
+
+    clock = pygame.time.Clock()
+    pygame.time.set_timer(OBSTACLE_TIMER, OBSTACLE_FREQUENCY)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and player_on_ground:
+                    PLAYER_Y_VELOCITY = PLAYER_JUMP_STRENGTH
+                    player_on_ground = False
+            if event.type == OBSTACLE_TIMER:
+                obstacles.append(create_obstacle())
+
+        PLAYER_Y_VELOCITY += GRAVITY
+        player_center[1] += PLAYER_Y_VELOCITY
+
+        if player_center[1] + PLAYER_RADIUS > GROUND_HEIGHT:
+            player_center[1] = GROUND_HEIGHT - PLAYER_RADIUS
+            PLAYER_Y_VELOCITY = 0
+            player_on_ground = True
+
+        move_obstacles()
+
+        if check_collision():
+            break
+
+        screen.fill(BACKGROUND_COLOR)
+        draw_player()
+        draw_obstacles()
+        draw_score()
+        pygame.display.flip()
+
+        clock.tick(30)
+
+    font = pygame.font.Font(None, 74)
+    text = font.render('Game Over', True, (255, 0, 0))
+    screen.fill(BACKGROUND_COLOR)
+    screen.blit(text, (WIDTH // 4, HEIGHT // 2))
+    score_text = font.render(f'Final Score: {score}', True, (0, 0, 0))
+    screen.blit(score_text, (WIDTH // 4, HEIGHT // 2 + 80))
+    pygame.display.flip()
+    pygame.time.wait(2000)
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    game_loop()
